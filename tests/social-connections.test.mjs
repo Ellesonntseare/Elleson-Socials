@@ -13,6 +13,19 @@ beforeEach(()=>{
 const response=data=>Response.json(data);
 const request=(path,method='GET',body)=>new Request('https://app.test/api/social/'+path,{method,headers:{Origin:'https://app.test'},...(body!==undefined?{body:JSON.stringify(body)}:{})});
 const call=(path,method='GET',body,admin=true,workspace=ws,fetcher)=>socialAPI(request(path,method,body),env,workspace,admin,{fetcher});
+test('only the chosen Facebook Page appears and the choice persists in the account',async()=>{
+ const ids=[crypto.randomUUID(),crypto.randomUUID(),crypto.randomUUID()];
+ for(const [i,id] of ids.entries())db.prepare('INSERT INTO social_accounts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(id,i===2?'other-owner':ws.id,'facebook','page-'+i,'Page '+i,'private-token',null,'pages_manage_posts','connected',new Date().toISOString());
+ assert.equal((await (await call('')).json()).accounts.length,0);
+ const chooser=await (await call('pages')).json();assert.equal(chooser.accounts.length,2);assert.ok(!JSON.stringify(chooser).includes('private-token'));
+ assert.equal((await call('active-page','PUT',{accountId:ids[2]})).status,404);
+ assert.equal((await call('active-page','PUT',{accountId:ids[1]})).status,200);
+ const selected=await (await call('')).json();assert.equal(selected.activePageId,ids[1]);assert.deepEqual(selected.accounts.map(a=>a.id),[ids[1]]);
+ assert.equal((await (await call('pages')).json()).accounts.length,2);
+ assert.equal((await call('active-page','PUT',{accountId:ids[0]})).status,200);
+ assert.deepEqual((await (await call('')).json()).accounts.map(a=>a.id),[ids[0]]);
+ await call('account/'+ids[0],'DELETE');assert.deepEqual((await (await call('')).json()).accounts.map(a=>a.id),[ids[1]]);
+});
 async function setup(provider='meta'){const r=await call('settings','PUT',{provider,clientId:'client-123',clientSecret:'do-not-disclose-secret',apiVersion:'v23.0'});assert.equal(r.status,200);}
 async function start(provider='facebook'){const r=await call(provider+'/start','POST');assert.equal(r.status,200);return new URL((await r.json()).url);}
 function cb(provider,state,workspace=ws,fetcher){return socialAPI(new Request('https://app.test/api/social/'+provider+'/callback?code=one-use-code&state='+encodeURIComponent(state)),env,workspace,true,{fetcher});}

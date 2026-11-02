@@ -10,6 +10,12 @@ const future=()=>new Date(Date.now()+3600000).toISOString();
 async function schedule(posts=ids.map(id=>({id,version:1,scheduledAt:future()}))){return call('','POST',{accountId,confirm:true,posts});}
 const jobs=()=>db.prepare('SELECT * FROM scheduled_jobs ORDER BY post_id').all();
 const selected=()=>jobs().map(j=>({id:j.id,revision:j.revision}));
+test('switching Pages filters the queue without cancelling another Page jobs',async()=>{
+ await schedule();const second=crypto.randomUUID();db.prepare('INSERT INTO social_accounts SELECT ?, workspace_id, provider, ?, ?, token, expires_at, scopes, status, updated_at FROM social_accounts WHERE id = ?').run(second,'67890','Other Page',accountId);
+ db.prepare('INSERT INTO page_preferences VALUES (?, ?, ?)').run(ws.id,second,new Date().toISOString());
+ assert.equal((await (await call()).json()).jobs.length,0);assert.equal(jobs().length,2);assert.ok(jobs().every(j=>j.status==='scheduled'));
+ db.prepare('UPDATE page_preferences SET account_id = ? WHERE workspace_id = ?').run(accountId,ws.id);assert.equal((await (await call()).json()).jobs.length,2);
+});
 test('confirmed jobs are server-side, account-scoped and do not send before their time',async()=>{assert.equal((await schedule()).status,200);assert.equal(jobs().length,2);assert.ok(jobs().every(j=>j.status==='scheduled'));assert.equal(await runScheduledJobs(env,{fetcher:()=>{throw Error('early');}}),0);const data=await (await call()).json();assert.equal(data.jobs.length,2);assert.equal(data.scheduler.online,true);assert.equal((await (await call('','GET',undefined,{id:'other'})).json()).jobs.length,0);});
 test('unavailable schedulers and missing confirmation cannot create publishing jobs',async()=>{env.SCHEDULER_ENABLED=false;assert.equal((await schedule()).status,503);env.SCHEDULER_ENABLED=true;assert.equal((await call('','POST',{accountId,confirm:false,posts:[]})).status,400);assert.equal(jobs().length,0);});
 test('a stale source in a batch rejects the batch before any job is created',async()=>{const data=ids.map(id=>({id,version:1,scheduledAt:future()}));data[1].version=0;assert.equal((await schedule(data)).status,409);assert.equal(jobs().length,0);});

@@ -43,6 +43,13 @@
       "when": 1793627932733,
       "tag": "0005_late_zarek",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793630896054,
+      "tag": "0006_cynical_shotgun",
+      "breakpoints": true
     }
   ]
 }
