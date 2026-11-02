@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {platforms,validatePost} from '../dist/platforms.js';
+import {platforms,validatePost} from '../public/planner/platforms.js';
 const post=(id,format,extra={})=>({caption:'A new story.',targets:[{id,format}],...extra});
 test('empty targets and empty posts are rejected',()=>{
  assert.ok(validatePost({caption:'',targets:[]}).length>=2);

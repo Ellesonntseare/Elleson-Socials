@@ -10,17 +10,22 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: node --check dist/app.js && node --check dist/storage.js
+      - run: node --check public/planner/app.js && node --check public/planner/storage.js
+      - run: npm run build
+      - name: Apply local database schema
+        run: node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_next_annihilus.sql
+      - name: Verify built Worker with D1 and R2
+        run: node scripts/smoke-worker.mjs
       - run: npm audit --omit=dev
       - run: npx cap sync android
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'

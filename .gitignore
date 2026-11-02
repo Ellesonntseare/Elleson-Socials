@@ -7,3 +7,11 @@ android/.gradle/
 android/local.properties
 android/app/build/
 android/build/
+dist/
+.vinext/
+.next/
+.wrangler/
+.sites-runtime/
+.dev.vars*
+*.tsbuildinfo
+outputs/

@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
-const root = resolve('dist');
+const root = resolve('public/planner');
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.json':'application/json'};
 http.createServer(async (req,res) => {
   try {
