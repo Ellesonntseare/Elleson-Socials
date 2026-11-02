@@ -10,6 +10,7 @@ import {Readable} from 'node:stream';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {handleAPI} from '../lib/backend.mjs';
+import {recoverScheduledJobs,runScheduledJobs} from '../lib/posting-queue.mjs';
 const sourceRoot=path.resolve(fileURLToPath(new URL('..',import.meta.url)));
 export function createSocialsHost({dataDir,mount='/socials',root=sourceRoot}={}){
  if(!dataDir||!/^\/[a-z0-9-]+$/.test(mount))throw Error('Choose a Socials data folder and a simple mount path.');
@@ -37,6 +38,11 @@ export function createSocialsHost({dataDir,mount='/socials',root=sourceRoot}={})
  function objectPath(key){if(typeof key!=='string'||!/^[-a-z0-9/]{1,240}$/i.test(key)||key.includes('..'))throw Error('Invalid media key.');const target=path.resolve(files,key);if(!target.startsWith(files+path.sep))throw Error('Invalid media key.');return target;}
  const BUCKET={async put(key,bytes){const target=objectPath(key);mkdirSync(path.dirname(target),{recursive:true});const tmp=target+'.'+randomBytes(8).toString('hex')+'.tmp';await writeFile(tmp,bytes,{mode:0o600});await rename(tmp,target);},async get(key){const target=objectPath(key);try{await stat(target);return {body:Readable.toWeb(createReadStream(target))};}catch(error){if(error.code==='ENOENT')return null;throw error;}},async delete(){/* Retain private orphan objects for recovery; no destructive purge on app updates. */}};
  const publicRoot=realpathSync(path.join(root,'public'));
+ const schedulerState={lastTick:null,running:false};
+ const runtime={DB,BUCKET,SOCIAL_TOKEN_KEY:tokenKey,API_PREFIX:mount+'/api',APP_PATH:mount+'/',OAUTH_RETURN_BASE:mount+'/connect',SCHEDULER_ENABLED:true,schedulerState,async readBundledMedia(asset){if(!/^\/content-packs\/sa-provinces\/\d\d\.png$/.test(asset))throw Error('Invalid bundled media.');return new Uint8Array(await readFile(path.join(publicRoot,asset.slice(1))));}};
+ let stopping=false,recovered=false;
+ async function tick(){if(stopping||schedulerState.running)return;schedulerState.running=true;try{if(!recovered){await recoverScheduledJobs(runtime);recovered=true;}schedulerState.lastTick=Date.now();await runScheduledJobs(runtime);}catch(error){console.error('Socials queue check failed',error?.name);}finally{schedulerState.running=false;}}
+ const queueTimer=setInterval(tick,10000);queueTimer.unref();void tick();
  async function handle(req,res,{principal,origin}={}){
   const pathname=new URL(req.url,'http://localhost').pathname;
   if(pathname!==mount&&!pathname.startsWith(mount+'/'))return false;
@@ -50,7 +56,7 @@ export function createSocialsHost({dataDir,mount='/socials',root=sourceRoot}={})
    // Host-approved same-origin writes only. No missing-Origin exception.
    const target=new URL(url);target.pathname=relative;
    const request=new Request(target,{method:req.method,headers,...(!['GET','HEAD'].includes(req.method)?{body:Readable.toWeb(req),duplex:'half'}:{})});
-   const response=await handleAPI(request,{DB,BUCKET,SOCIAL_TOKEN_KEY:tokenKey,ADMIN_BOOTSTRAP_EMAIL:principal.admin?principal.email:undefined,API_PREFIX:mount+'/api',APP_PATH:mount+'/',OAUTH_RETURN_BASE:mount+'/connect',async readBundledMedia(asset){if(!/^\/content-packs\/sa-provinces\/\d\d\.png$/.test(asset))throw Error('Invalid bundled media.');return new Uint8Array(await readFile(path.join(publicRoot,asset.slice(1))));}});
+   const response=await handleAPI(request,{...runtime,ADMIN_BOOTSTRAP_EMAIL:principal.admin?principal.email:undefined});
    const responseHeaders=Object.fromEntries(response.headers);
    if(responseHeaders.location?.startsWith('/content-packs/'))responseHeaders.location=mount+responseHeaders.location;
    res.writeHead(response.status,responseHeaders);if(response.body)Readable.fromWeb(response.body).on('error',()=>res.destroy()).pipe(res);else res.end();return true;
@@ -66,5 +72,5 @@ export function createSocialsHost({dataDir,mount='/socials',root=sourceRoot}={})
   const type={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.svg':'image/svg+xml'}[ext]||'application/octet-stream';
   res.writeHead(200,{'Content-Type':type,'Content-Length':bytes.length,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'"});res.end(req.method==='HEAD'?undefined:bytes);return true;
  }
- return {handle,close(){clearInterval(backupTimer);sqlite.close();},dataDir};
+ return {handle,close(){stopping=true;clearInterval(queueTimer);clearInterval(backupTimer);if(!schedulerState.running)sqlite.close();else{const wait=setInterval(()=>{if(!schedulerState.running){clearInterval(wait);sqlite.close();}},100);wait.unref();}},dataDir};
 }

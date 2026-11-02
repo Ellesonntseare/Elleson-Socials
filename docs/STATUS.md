@@ -88,3 +88,13 @@ Version 0.1 already passed twelve platform tests, a successful Android debug bui
 Added account-scoped final Page selection and confirmation for text posts and one PNG/JPEG image. Private image bytes upload directly from the server; no public media URL is created. A persisted per-post/per-Page reservation blocks duplicate and concurrent sends. Explicit rejection can be retried after correction; network ambiguity remains blocked for manual checking on Facebook. A success stores the provider post ID and adds an account activity receipt. Draft revisions must match the reviewed content. Multi-image posts, video/Reels, scheduled publishing, first comments and locations are not handled by this direct endpoint. Schedule all still saves calendar dates only.
 
 81 tests passed locally, including private uploads, successful receipts, concurrency, duplicate suppression, stale review, account isolation, provider rejection and ambiguous network results. No real Facebook publish was attempted: the Meta app is not configured and the user has not selected an authorized Page.
+
+
+## 0.4.0 — publishing workflow
+
+- Real account-scoped scheduled jobs, source-revision review, a 10-second worker, restart recovery and no automatic duplicate retry after ambiguous provider responses. The Connect host starts the module at host startup, so publishing does not depend on keeping a browser open. PC uptime is required. Jobs over 15 minutes late require review.
+- Queue tabs show Scheduled, Published and Needs attention, with pause, resume, move, cancel and guarded retry controls. Schedule all/selected can approve actual Facebook Page jobs or save calendar-only plans. Calendar labels distinguish confirmed jobs from plans.
+- Page identity previews use connected Page names and an authenticated, bounded image proxy for trusted Meta image hosts; the UI never receives private CDN or token-bearing image URLs.
+- Durable account notification inbox for schedule confirmation, publishing outcomes and reconnect failures. Optional browser alerts while open; background mobile push is not configured.
+- Android 0.4.0 remembers the selected Connect server and opens its authenticated workspace using Android Custom Tabs, sharing the browser-managed account session for provider approval and return. HTTPS or private LAN HTTP only. Older device-post recovery remains accessible. No regular social passwords are stored in Android.
+- The Meta app is still unconfigured. A real Facebook approval and a user-selected live post are still required; no live Page connection or publish has been represented as tested. Physical Android checks remain outstanding.

@@ -60,3 +60,14 @@ test('social settings reject oversized streamed bodies',async()=>{
 test('shared-host return URLs match setup and authorization without exposing tokens',async()=>{
  env.API_PREFIX='/socials/api';env.OAUTH_RETURN_BASE='/socials/connect';await setup();const settings=await (await call('settings')).json();assert.ok(settings.apps.find(p=>p.id==='meta').callbacks.includes('https://app.test/socials/connect/facebook'));const url=await start();assert.equal(url.searchParams.get('redirect_uri'),'https://app.test/socials/connect/facebook');assert.ok(!url.href.includes('do-not-disclose-secret'));
 });
+
+
+test('Page pictures are proxied within their account and untrusted picture hosts are blocked',async()=>{
+ const fake=async()=>Response.json({did:'did:plc:avatar-test',handle:'avatar.bsky.social',accessJwt:'access',refreshJwt:'refresh'});
+ await call('bluesky/connect','POST',{handle:'avatar.bsky.social',password:'app-pass'},true,ws,fake);const account=db.prepare('SELECT id FROM social_accounts').get();
+ db.prepare('UPDATE account_profiles SET picture = ? WHERE account_id = ?').run('https://cdn.fbcdn.net/picture.jpg',account.id);
+ const listing=await (await call('')).json();assert.equal(listing.accounts[0].avatarURL,'/api/social/account/'+account.id+'/picture');assert.ok(!JSON.stringify(listing).includes('cdn.fbcdn.net'));
+ let reads=0;const image=await call('account/'+account.id+'/picture','GET',undefined,true,ws,async(url)=>{reads++;assert.equal(url,'https://cdn.fbcdn.net/picture.jpg');return new Response(new Uint8Array([255,216,255]),{headers:{'Content-Type':'image/jpeg'}});});assert.equal(image.status,200);assert.equal(reads,1);
+ assert.equal((await call('account/'+account.id+'/picture','GET',undefined,true,{id:'other'},()=>{throw Error('must not fetch');})).status,404);
+ db.prepare('UPDATE account_profiles SET picture = ? WHERE account_id = ?').run('http://127.0.0.1/private',account.id);assert.equal((await call('account/'+account.id+'/picture','GET',undefined,true,ws,()=>{throw Error('must not fetch');})).status,404);
+});
