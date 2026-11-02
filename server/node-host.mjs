@@ -50,7 +50,7 @@ export function createSocialsHost({dataDir,mount='/socials',root=sourceRoot}={})
    // Host-approved same-origin writes only. No missing-Origin exception.
    const target=new URL(url);target.pathname=relative;
    const request=new Request(target,{method:req.method,headers,...(!['GET','HEAD'].includes(req.method)?{body:Readable.toWeb(req),duplex:'half'}:{})});
-   const response=await handleAPI(request,{DB,BUCKET,SOCIAL_TOKEN_KEY:tokenKey,ADMIN_BOOTSTRAP_EMAIL:principal.admin?principal.email:undefined,API_PREFIX:mount+'/api',APP_PATH:mount+'/',OAUTH_RETURN_BASE:mount+'/connect'});
+   const response=await handleAPI(request,{DB,BUCKET,SOCIAL_TOKEN_KEY:tokenKey,ADMIN_BOOTSTRAP_EMAIL:principal.admin?principal.email:undefined,API_PREFIX:mount+'/api',APP_PATH:mount+'/',OAUTH_RETURN_BASE:mount+'/connect',async readBundledMedia(asset){if(!/^\/content-packs\/sa-provinces\/\d\d\.png$/.test(asset))throw Error('Invalid bundled media.');return new Uint8Array(await readFile(path.join(publicRoot,asset.slice(1))));}});
    const responseHeaders=Object.fromEntries(response.headers);
    if(responseHeaders.location?.startsWith('/content-packs/'))responseHeaders.location=mount+responseHeaders.location;
    res.writeHead(response.status,responseHeaders);if(response.body)Readable.fromWeb(response.body).on('error',()=>res.destroy()).pipe(res);else res.end();return true;

@@ -29,6 +29,13 @@
       "when": 1793623500260,
       "tag": "0003_cool_black_widow",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793626486520,
+      "tag": "0004_dapper_starfox",
+      "breakpoints": true
     }
   ]
 }

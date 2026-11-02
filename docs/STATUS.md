@@ -81,3 +81,10 @@ Version 0.1 already passed twelve platform tests, a successful Android debug bui
 - Corrected the Facebook Page listing request to avoid requesting Instagram-only fields without Instagram permissions.
 - Shared-host OAuth now returns to a minimal public document, then exchanges the approval code through an authenticated same-origin fetch. This supports Connect's Strict session cookies without weakening them. State remains account-bound, one-time and expiring.
 - Verified 70 Socials tests and 14 focused Connect/server/Projects checks. Real Meta/X authorization requires configured developer app credentials; no live social publication is claimed. Browser visual inspection remained unavailable because browser control is disabled in Work settings.
+
+
+### Facebook direct-publishing review
+
+Added account-scoped final Page selection and confirmation for text posts and one PNG/JPEG image. Private image bytes upload directly from the server; no public media URL is created. A persisted per-post/per-Page reservation blocks duplicate and concurrent sends. Explicit rejection can be retried after correction; network ambiguity remains blocked for manual checking on Facebook. A success stores the provider post ID and adds an account activity receipt. Draft revisions must match the reviewed content. Multi-image posts, video/Reels, scheduled publishing, first comments and locations are not handled by this direct endpoint. Schedule all still saves calendar dates only.
+
+81 tests passed locally, including private uploads, successful receipts, concurrency, duplicate suppression, stale review, account isolation, provider rejection and ambiguous network results. No real Facebook publish was attempted: the Meta app is not configured and the user has not selected an authorized Page.

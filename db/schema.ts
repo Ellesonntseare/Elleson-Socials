@@ -1,4 +1,7 @@
 import {sqliteTable,text,integer,primaryKey,uniqueIndex} from 'drizzle-orm/sqlite-core';
+export const publishing=sqliteTable('publishing',{
+ id:text('id').primaryKey(),workspaceId:text('workspace_id').notNull(),postId:text('post_id').notNull(),accountId:text('account_id').notNull(),postVersion:integer('post_version').notNull(),status:text('status').notNull(),remoteId:text('remote_id'),error:text('error'),createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull()
+},t=>[uniqueIndex('one_post_per_page').on(t.workspaceId,t.postId,t.accountId)]);
 export const accountActivity=sqliteTable('account_activity',{
  id:text('id').primaryKey(),workspaceId:text('workspace_id').notNull(),event:text('event').notNull(),entityId:text('entity_id').notNull(),label:text('label').notNull(),createdAt:text('created_at').notNull()
 });
