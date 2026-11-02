@@ -60,3 +60,12 @@ Version 0.1 already passed twelve platform tests, a successful Android debug bui
 - 66 automated tests cover concurrency, account isolation, authenticated Node mounting, durable activity, private media, recovery, encrypted tokens, OAuth state and replay protection. Actual provider approval flows and physical Android interaction remain unverified.
 
 - 2026-11-02: hosted publication is blocked because the active Sites connector now lists only the ellesontrading@gmail.com account and returns project_not_found for the retained Socials Site. Keep its ID and audience; do not create a replacement. APK 0.3.0 and GitHub CI passed.
+
+
+## Installed shared-server verification — 2026-11-02
+
+- Mounted Socials on the installed Connect server at `/socials/`, using the existing Connect account scope and owner Google sign-in. Existing config, password, sessions and account storage were preserved; changed host files and config were backed up before restart.
+- Verified on the installed server: 65 drafts, 65 PNG images, no planned dates, 100 recent server-generated activity records, and first/last media downloads. The owner Google account uses the same owner workspace as password-paired access.
+- Production data is outside deployed source at `%LOCALAPPDATA%/Elleson/Socials`; app updates retain SQLite, private files, history and the encryption key. Daily local database snapshots do not protect against loss of the PC; retain an external workspace backup too.
+- The original ChatGPT-hosted Site remains a separate database on its previous version until its Sites connection is restored. Imported drafts are currently on the Connect server, not that original Site.
+- Connect passed 445 tests; targeted Projects UI and installed-module integration tests also passed. Browser control is currently disabled in Work settings, so installed UI screenshot verification was unavailable.
