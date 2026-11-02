@@ -3,7 +3,7 @@
 import {spawn} from 'node:child_process';
 import assert from 'node:assert/strict';
 const origin='http://127.0.0.1:8788';
-const processHandle=spawn(process.execPath,['--import','./scripts/sites-env.mjs','./node_modules/wrangler/bin/wrangler.js','dev','--config','dist/server/wrangler.json','--local','--persist-to','.wrangler/state','--ip','127.0.0.1','--port','8788','--inspector-port','0'],{stdio:'inherit'});
+const processHandle=spawn(process.execPath,['--import','./scripts/sites-env.mjs','./node_modules/wrangler/bin/wrangler.js','dev','--config','dist/server/wrangler.json','--local','--persist-to','.wrangler/state','--ip','127.0.0.1','--port','8788','--inspector-port','0','--var','ADMIN_BOOTSTRAP_EMAIL:ci-user@example.test'],{stdio:'inherit'});
 const postId=crypto.randomUUID(),mediaId=crypto.randomUUID();
 async function call(path,{method='GET',body,user='ci-user',version}={}){
  const headers={...(user?{'oai-authenticated-user-id':user,'oai-authenticated-user-email':user+'@example.test'}:{}),...(method!=='GET'?{Origin:origin}:{}),...(version!==undefined?{'If-Match':String(version)}:{})};
@@ -15,6 +15,10 @@ try{
  let up=false;for(let i=0;i<60;i++){try{const r=await call('session',{user:null});if(r.status===401){up=true;break;}}catch{}if(processHandle.exitCode!==null)throw Error('Worker exited before startup.');await new Promise(resolve=>setTimeout(resolve,1000));}
  assert.ok(up,'Worker starts and rejects anonymous requests');
  const session=await call('session');assert.equal(session.status,200,await session.clone().text());
+ assert.equal((await session.json()).user.role,'admin');
+ const seeded=await (await call('posts')).json();assert.equal(seeded.length,65);
+ const packImage=await call('media/'+seeded[0].mediaIds[0]+'/file');assert.equal(packImage.status,200);assert.equal(packImage.headers.get('content-type'),'image/png');
+ assert.equal((await call('admin/history',{user:'other-ci-user'})).status,403);
  const png=Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7XcAAAAASUVORK5CYII=','base64'));
  const upload=await call('media/'+mediaId,{method:'PUT',body:png});assert.equal(upload.status,201,await upload.clone().text());
  assert.equal((await call('media/'+mediaId+'/file')).status,200);
@@ -28,6 +32,9 @@ try{
  assert.equal((await call('media/'+mediaId,{method:'DELETE'})).status,409);
  assert.equal((await call('posts/'+postId,{method:'DELETE',version:2})).status,200);
  assert.equal((await call('media/'+mediaId,{method:'DELETE'})).status,200);
+ const recovery=await call('admin/recover/'+postId+'/1',{method:'POST'});assert.equal(recovery.status,201,await recovery.clone().text());assert.equal((await recovery.json()).caption,draft.caption);
+ assert.equal((await call('media/'+mediaId+'/file')).status,200);
+ const login=await fetch(origin+'/login');assert.equal(login.status,200);assert.ok((await login.text()).includes('Continue with ChatGPT'));
  const page=await fetch(origin+'/planner/index.html');assert.equal(page.status,200);assert.ok((await page.text()).includes('Elleson Socials'));
  console.log('Built Worker integration check passed: identity, D1, R2, isolation, revisions, deletion, static planner.');
 }finally{processHandle.kill('SIGTERM');}
