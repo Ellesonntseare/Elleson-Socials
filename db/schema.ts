@@ -1,4 +1,10 @@
 import {sqliteTable,text,integer,primaryKey,uniqueIndex} from 'drizzle-orm/sqlite-core';
+export const pushSubscriptions=sqliteTable('push_subscriptions',{
+ id:text('id').primaryKey(),workspaceId:text('workspace_id').notNull(),subscription:text('subscription').notNull(),createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull()
+});
+export const pushDeliveries=sqliteTable('push_deliveries',{
+ subscriptionId:text('subscription_id').notNull(),noticeId:text('notice_id').notNull(),status:text('status').notNull(),attempts:integer('attempts').notNull().default(0),nextAttempt:text('next_attempt').notNull(),updatedAt:text('updated_at').notNull()
+},t=>[primaryKey({columns:[t.subscriptionId,t.noticeId]})]);
 export const pagePreferences=sqliteTable('page_preferences',{
  workspaceId:text('workspace_id').primaryKey(),accountId:text('account_id').notNull(),updatedAt:text('updated_at').notNull()
 });

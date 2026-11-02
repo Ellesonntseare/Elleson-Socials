@@ -11,6 +11,8 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {handleAPI} from '../lib/backend.mjs';
 import {recoverScheduledJobs,runScheduledJobs} from '../lib/posting-queue.mjs';
+import {deliverPhoneNotifications} from '../lib/phone-notifications.mjs';
+import {seal,unseal} from '../lib/token-vault.mjs';
 const sourceRoot=path.resolve(fileURLToPath(new URL('..',import.meta.url)));
 export function createSocialsHost({dataDir,mount='/socials',root=sourceRoot}={}){
  if(!dataDir||!/^\/[a-z0-9-]+$/.test(mount))throw Error('Choose a Socials data folder and a simple mount path.');
@@ -40,8 +42,16 @@ export function createSocialsHost({dataDir,mount='/socials',root=sourceRoot}={})
  const publicRoot=realpathSync(path.join(root,'public'));
  const schedulerState={lastTick:null,running:false};
  const runtime={DB,BUCKET,SOCIAL_TOKEN_KEY:tokenKey,API_PREFIX:mount+'/api',APP_PATH:mount+'/',OAUTH_RETURN_BASE:mount+'/connect',SCHEDULER_ENABLED:true,schedulerState,async readBundledMedia(asset){if(!/^\/content-packs\/sa-provinces\/\d\d\.png$/.test(asset))throw Error('Invalid bundled media.');return new Uint8Array(await readFile(path.join(publicRoot,asset.slice(1))));}};
+ // Push setup is independent of publishing. A missing optional runtime package
+ // must never stop the posting scheduler or prevent access to saved work.
+ void (async()=>{try{const {default:webpush}=await import('web-push');const keyFile=path.join(dataDir,'phone-push-key.json');let keys;
+  if(existsSync(keyFile))keys=await unseal(JSON.parse(readFileSync(keyFile,'utf8')).sealed,tokenKey,'phone-push-key');
+  else{keys=webpush.generateVAPIDKeys();writeFileSync(keyFile,JSON.stringify({sealed:await seal(keys,tokenKey,'phone-push-key')}),{flag:'wx',mode:0o600});}
+  const savedKey=path.join(backupDir,'phone-push-key.json');if(!existsSync(savedKey))writeFileSync(savedKey,readFileSync(keyFile),{flag:'wx',mode:0o600});
+  runtime.PUSH_PUBLIC_KEY=keys.publicKey;runtime.pushSender=(subscription,payload)=>webpush.sendNotification(subscription,payload,{vapidDetails:{subject:'https://github.com/Ellesonntseare/Elleson-Socials',publicKey:keys.publicKey,privateKey:keys.privateKey},TTL:86400,urgency:'high',timeout:10000});
+ }catch(error){console.error('Phone notifications unavailable',error?.name);}})();
  let stopping=false,recovered=false;
- async function tick(){if(stopping||schedulerState.running)return;schedulerState.running=true;try{if(!recovered){await recoverScheduledJobs(runtime);recovered=true;}schedulerState.lastTick=Date.now();await runScheduledJobs(runtime);}catch(error){console.error('Socials queue check failed',error?.name);}finally{schedulerState.running=false;}}
+ async function tick(){if(stopping||schedulerState.running)return;schedulerState.running=true;try{if(!recovered){await recoverScheduledJobs(runtime);await DB.prepare("UPDATE push_deliveries SET status = 'retry', next_attempt = ? WHERE status = 'sending'").bind(new Date().toISOString()).run();recovered=true;}schedulerState.lastTick=Date.now();await runScheduledJobs(runtime);await deliverPhoneNotifications(runtime);}catch(error){console.error('Socials queue check failed',error?.name);}finally{schedulerState.running=false;}}
  const queueTimer=setInterval(tick,10000);queueTimer.unref();void tick();
  async function handle(req,res,{principal,origin}={}){
   const pathname=new URL(req.url,'http://localhost').pathname;

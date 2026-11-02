@@ -1,3 +1,17 @@
+# Version 0.5.0 — scheduling and delivery results
+
+Implemented 2 November 2026 for the shared Connect host. GitHub Actions records exact build and APK outcomes for the pushed source.
+
+- Main scheduling flow reviews Page, content and dates, then requires a separate confirmation. Calendar-only dates are an explicit separate option.
+- Next-post card shows real scheduled content, countdown, preview, pause and change-time controls.
+- Account-owned delivery details show Scheduled, Sending, Published, Not published or Check Facebook; Published requires a provider reference. Unknown delivery has no blind Retry control.
+- Phone notification subscriptions are encrypted and tied to the signed-in workspace. Node uses persistent encrypted VAPID keys and a bounded delivery outbox; notification taps open the specific private post result.
+- 109 automated tests pass, including push ownership, destination validation, encryption, expired subscriptions, bounded retries, result ownership and service-worker routing. Functional DOM checks cover two-step scheduling without an early write.
+- Physical Android notification permission, closed-app delivery and tapping remain unverified. A user must opt in using the HTTPS workspace and use Send test notification. HTTP LAN addresses cannot register background browser push.
+- Existing scheduled jobs and publishing receipts are kept on code updates. Test fixtures do not contact Facebook or send device notifications.
+
+Earlier milestone record follows.
+
 # Version 0.2 — cloud planning milestone
 
 Prepared on 2 November 2026. Check the delivery message and current GitHub run for final build and deployment outcomes.

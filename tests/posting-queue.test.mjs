@@ -10,6 +10,7 @@ const future=()=>new Date(Date.now()+3600000).toISOString();
 async function schedule(posts=ids.map(id=>({id,version:1,scheduledAt:future()}))){return call('','POST',{accountId,confirm:true,posts});}
 const jobs=()=>db.prepare('SELECT * FROM scheduled_jobs ORDER BY post_id').all();
 const selected=()=>jobs().map(j=>({id:j.id,revision:j.revision}));
+test('post delivery details are owned by the account even when another Page is selected',async()=>{await schedule();const detail=await (await call('result/'+ids[0])).json();assert.equal(detail.jobs[0].pageName,'My Page');assert.equal(detail.jobs[0].status,'scheduled');assert.equal((await call('result/'+ids[0],'GET',undefined,{id:'other'})).status,404);});
 test('switching Pages filters the queue without cancelling another Page jobs',async()=>{
  await schedule();const second=crypto.randomUUID();db.prepare('INSERT INTO social_accounts SELECT ?, workspace_id, provider, ?, ?, token, expires_at, scopes, status, updated_at FROM social_accounts WHERE id = ?').run(second,'67890','Other Page',accountId);
  db.prepare('INSERT INTO page_preferences VALUES (?, ?, ?)').run(ws.id,second,new Date().toISOString());

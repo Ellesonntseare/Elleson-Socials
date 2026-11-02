@@ -1,0 +1,18 @@
+const api=(...args)=>import('./storage.js').then(module=>module.api(...args));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export function deliveryState(job,receipt){
+ if(receipt?.status==='posted'&&receipt.remoteId)return {label:'Published',step:3,tone:'success',help:'Facebook confirmed this post.',retry:false};
+ if(receipt?.status==='unknown')return {label:'Check Facebook',step:2,tone:'warning',help:'Delivery was not confirmed. Check the Page before trying again to avoid a duplicate.',retry:false};
+ if(receipt?.status==='sending'||job?.status==='running')return {label:'Sending',step:2,tone:'pending',help:'Waiting for Facebook’s response.',retry:false};
+ if(job?.status==='failed'||receipt?.status==='failed')return {label:'Not published',step:2,tone:'error',help:job?.error||receipt?.error||'Review this post before trying again.',retry:true};
+ if(job?.status==='paused')return {label:'Paused',step:1,tone:'warning',help:'Resume this post from the posting queue when you are ready.',retry:false};
+ if(job?.status==='cancelled')return {label:'Cancelled',step:1,tone:'warning',help:'This job will not publish.',retry:false};
+ if(job?.status==='scheduled')return {label:'Scheduled',step:1,tone:'pending',help:'The server will send this post at the scheduled time.',retry:false};
+ return {label:'Not scheduled',step:0,tone:'warning',help:'No publishing job or Facebook receipt is saved for this post.',retry:false};
+}
+export async function openDeliveryResult(postId){
+ if(!/^[0-9a-f-]{36}$/i.test(postId))return;
+ document.querySelector('.delivery-result-dialog')?.close();const d=document.createElement('dialog');d.className='delivery-result-dialog';d.innerHTML='<div class="dialog-head"><h2>Post result</h2><button class="icon-button" data-close aria-label="Close result">×</button></div><div class="delivery-result-body" role="status">Loading result…</div>';document.body.append(d);d.showModal();d.querySelector('[data-close]').onclick=()=>d.close();let timer;
+ async function update(){try{const data=await api('queue/result/'+postId);if(!d.isConnected)return;const accountIds=new Set([...data.jobs,...data.receipts].map(r=>r.accountId));d.querySelector('.delivery-result-body').innerHTML='<h3>'+esc(data.title||'Your post')+'</h3>'+(accountIds.size?[...accountIds].map(id=>{const job=data.jobs.find(j=>j.accountId===id),receipt=data.receipts.find(r=>r.accountId===id),state=deliveryState(job,receipt);return `<section class="delivery-card ${state.tone}"><span class="eyebrow">${esc(receipt?.pageName||job?.pageName)}</span><h2>${state.label}</h2><ol class="delivery-steps">${['Scheduled','Sending','Published'].map((step,i)=>`<li class="${state.step>i?'complete':''}">${step}</li>`).join('')}</ol><p>${esc(state.help)}</p>${job?.scheduledAt?'<small>Scheduled: '+esc(new Date(job.scheduledAt).toLocaleString())+'</small>':''}${receipt?.updatedAt?'<small>Last result: '+esc(new Date(receipt.updatedAt).toLocaleString())+'</small>':''}${receipt?.status==='posted'&&receipt.url?'<a class="button primary" href="'+esc(receipt.url)+'" target="_blank" rel="noopener">View on Facebook ↗</a>':''}</section>`;}).join(''):'<p>No Facebook send is recorded for this post.</p>')+'<button class="button secondary" data-refresh-result>Refresh result</button>';d.querySelector('[data-refresh-result]').onclick=update;}catch(error){if(d.isConnected)d.querySelector('.delivery-result-body').textContent=error.message;}}
+ d.addEventListener('close',()=>{clearInterval(timer);d.remove();});await update();timer=setInterval(()=>{if(!document.hidden)void update();},10000);
+}
