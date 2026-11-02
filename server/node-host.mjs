@@ -25,6 +25,14 @@ export function createSocialsHost({dataDir,mount='/socials',root=sourceRoot}={})
   sqlite.exec('BEGIN');try{sqlite.exec(sql);sqlite.prepare('INSERT INTO _socials_migrations VALUES (?, ?)').run(name,hash);sqlite.exec('COMMIT');}catch(error){sqlite.exec('ROLLBACK');sqlite.close();throw error;}
  }
  const DB={prepare(sql){return {bind(...args){const statement=sqlite.prepare(sql);return {run(){return {meta:{changes:Number(statement.run(...args).changes)}};},first(){return statement.get(...args)||null;},all(){return {results:statement.all(...args)};}};}};},batch(statements){sqlite.exec('BEGIN');try{const rows=statements.map(s=>s.run());sqlite.exec('COMMIT');return rows;}catch(error){sqlite.exec('ROLLBACK');throw error;}}};
+ // Retain one consistent database snapshot per UTC day, separate from source.
+ const backupDir=path.join(dataDir,'backups');mkdirSync(backupDir,{recursive:true});
+ function dailyBackup(){
+  const day=new Date().toISOString().slice(0,10),file=path.join(backupDir,day+'.sqlite');
+  if(!existsSync(file))sqlite.prepare('VACUUM INTO ?').run(file);
+  const keyFile=path.join(backupDir,'server-secrets.json');if(!existsSync(keyFile))writeFileSync(keyFile,readFileSync(secrets),{flag:'wx',mode:0o600});
+ }
+ dailyBackup();const backupTimer=setInterval(()=>{try{dailyBackup();}catch(error){console.error('Socials backup failed',error?.name);}},60*60*1000);backupTimer.unref();
  const files=path.join(dataDir,'files');mkdirSync(files,{recursive:true});
  function objectPath(key){if(typeof key!=='string'||!/^[-a-z0-9/]{1,240}$/i.test(key)||key.includes('..'))throw Error('Invalid media key.');const target=path.resolve(files,key);if(!target.startsWith(files+path.sep))throw Error('Invalid media key.');return target;}
  const BUCKET={async put(key,bytes){const target=objectPath(key);mkdirSync(path.dirname(target),{recursive:true});const tmp=target+'.'+randomBytes(8).toString('hex')+'.tmp';await writeFile(tmp,bytes,{mode:0o600});await rename(tmp,target);},async get(key){const target=objectPath(key);try{await stat(target);return {body:Readable.toWeb(createReadStream(target))};}catch(error){if(error.code==='ENOENT')return null;throw error;}},async delete(){/* Retain private orphan objects for recovery; no destructive purge on app updates. */}};
@@ -58,5 +66,5 @@ export function createSocialsHost({dataDir,mount='/socials',root=sourceRoot}={})
   const type={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.svg':'image/svg+xml'}[ext]||'application/octet-stream';
   res.writeHead(200,{'Content-Type':type,'Content-Length':bytes.length,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'"});res.end(req.method==='HEAD'?undefined:bytes);return true;
  }
- return {handle,close(){sqlite.close();},dataDir};
+ return {handle,close(){clearInterval(backupTimer);sqlite.close();},dataDir};
 }
