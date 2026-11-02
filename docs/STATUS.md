@@ -69,3 +69,15 @@ Version 0.1 already passed twelve platform tests, a successful Android debug bui
 - Production data is outside deployed source at `%LOCALAPPDATA%/Elleson/Socials`; app updates retain SQLite, private files, history and the encryption key. Daily local database snapshots do not protect against loss of the PC; retain an external workspace backup too.
 - The original ChatGPT-hosted Site remains a separate database on its previous version until its Sites connection is restored. Imported drafts are currently on the Connect server, not that original Site.
 - Connect passed 445 tests; targeted Projects UI and installed-module integration tests also passed. Browser control is currently disabled in Work settings, so installed UI screenshot verification was unavailable.
+
+
+## 0.3.1 — visual posts, calendar visibility and connection setup
+
+- Redesigned the app around a deep green navigation rail, larger typography, a quieter background and image-first draft cards using real saved post media.
+- Added full post preview with channel switching and carousel navigation; previews never modify drafts.
+- Schedule all reviews every selected date, supports one shared time or spaced calendar dates, validates all content before writing and reports partial-save failures. Dates are plans, not publishing jobs.
+- Calendar days show No posts or a post count, thumbnail previews, occupied-day backgrounds and a day detail dialog.
+- Added a protected three-step Facebook developer app setup with copyable return URL, requested permissions and usual Facebook authorization. Other platforms retain their connection settings and OAuth flows.
+- Corrected the Facebook Page listing request to avoid requesting Instagram-only fields without Instagram permissions.
+- Shared-host OAuth now returns to a minimal public document, then exchanges the approval code through an authenticated same-origin fetch. This supports Connect's Strict session cookies without weakening them. State remains account-bound, one-time and expiring.
+- Verified 70 Socials tests and 14 focused Connect/server/Projects checks. Real Meta/X authorization requires configured developer app credentials; no live social publication is claimed. Browser visual inspection remained unavailable because browser control is disabled in Work settings.

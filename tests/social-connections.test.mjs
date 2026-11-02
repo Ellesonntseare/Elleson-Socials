@@ -55,3 +55,8 @@ test('provider rejection does not create a connected account or leak its respons
 test('social settings reject oversized streamed bodies',async()=>{
  const r=await socialAPI(new Request('https://app.test/api/social/settings',{method:'PUT',body:JSON.stringify({clientSecret:'x'.repeat(9000)})}),env,ws,true);assert.equal(r.status,413);
 });
+
+
+test('shared-host return URLs match setup and authorization without exposing tokens',async()=>{
+ env.API_PREFIX='/socials/api';env.OAUTH_RETURN_BASE='/socials/connect';await setup();const settings=await (await call('settings')).json();assert.ok(settings.apps.find(p=>p.id==='meta').callbacks.includes('https://app.test/socials/connect/facebook'));const url=await start();assert.equal(url.searchParams.get('redirect_uri'),'https://app.test/socials/connect/facebook');assert.ok(!url.href.includes('do-not-disclose-secret'));
+});
