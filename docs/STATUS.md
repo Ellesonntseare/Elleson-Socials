@@ -35,3 +35,14 @@ Prepared on 2 November 2026. Check the delivery message and current GitHub run f
 - The previous turn's screenshot capture failed in both browser surfaces; visual verification must be attempted again for this version.
 
 Version 0.1 already passed twelve platform tests, a successful Android debug build, and a browser draft persistence/calendar flow. Those prior results do not establish the new cloud behavior.
+
+
+## Admin and province content update — 2026-11-02
+
+- Added `/login` with the supported ChatGPT sign-in flow. No separate password database is created.
+- `ADMIN_BOOTSTRAP_EMAIL` binds the verified owner once; administrator authorization thereafter uses the stable Site user ID.
+- First owner session imports 65 unique South Africa by Province Facebook image drafts from the supplied four ZIPs. Posts 25, 45 and 55 are deduplicated by matching image/caption hashes. Reopening never overwrites edits or resurrects deletions.
+- Images ship with this owner-private publication; post/media records are saved in the owner cloud workspace when the owner opens it. Direct media access remains protected by the private Site audience.
+- SQLite triggers record post versions atomically, including edits and deletions. Admin & recovery restores copies as new drafts, with retained media, without overwriting current work. The interface lists 150 recent versions; database history is retained without automatic pruning in this release.
+- Existing full workspace export includes active posts and media; it excludes cloud version history. Original ZIPs remain unchanged. Supplied statistical claims have not been independently checked.
+- 53 automated tests include owner binding, retry-safe 65-post imports, media isolation and revision recovery. Hosted owner sign-in remains a user step; no social network publishing is performed.

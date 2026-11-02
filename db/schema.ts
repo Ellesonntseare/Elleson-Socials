@@ -1,4 +1,10 @@
 import {sqliteTable,text,integer,primaryKey,uniqueIndex} from 'drizzle-orm/sqlite-core';
+export const appAdmins=sqliteTable('app_admins',{
+ slot:text('slot').primaryKey(),userId:text('user_id').notNull(),seeded:integer('seeded').notNull().default(0),createdAt:text('created_at').notNull()
+});
+export const postHistory=sqliteTable('post_history',{
+ workspaceId:text('workspace_id').notNull(),postId:text('post_id').notNull(),version:integer('version').notNull(),document:text('document').notNull(),deleted:integer('deleted').notNull(),savedAt:text('saved_at').notNull()
+},t=>[primaryKey({columns:[t.workspaceId,t.postId,t.version]})]);
 export const workspaces=sqliteTable('workspaces',{
  id:text('id').primaryKey(),ownerId:text('owner_id').notNull(),name:text('name').notNull(),createdAt:text('created_at').notNull()
 },t=>[uniqueIndex('workspaces_owner').on(t.ownerId)]);

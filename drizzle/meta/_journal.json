@@ -8,6 +8,13 @@
       "when": 1793615833889,
       "tag": "0000_next_annihilus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1793620674663,
+      "tag": "0001_slimy_miss_america",
+      "breakpoints": true
     }
   ]
 }

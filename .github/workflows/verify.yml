@@ -21,7 +21,10 @@ jobs:
       - run: npm run build
       - run: npx tsc --noEmit
       - name: Apply local database schema
-        run: node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_next_annihilus.sql
+        run: |
+          for migration in drizzle/*.sql; do
+            node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file "$migration"
+          done
       - name: Verify built Worker with D1 and R2
         run: node scripts/smoke-worker.mjs
       - uses: actions/upload-artifact@v4

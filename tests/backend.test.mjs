@@ -9,7 +9,7 @@ beforeEach(()=>{
  // Exercise the exact generated schema, rather than a parallel test-only schema.
  const files=readdirSync(new URL('../drizzle/',import.meta.url)).filter(f=>f.endsWith('.sql')).sort();
  for(const file of files)db.exec(readFileSync(new URL('../drizzle/'+file,import.meta.url),'utf8'));
- const D1={prepare(sql){return {bind(...args){const statement=db.prepare(sql);return {async run(){const result=statement.run(...args);return {meta:{changes:Number(result.changes)}};},async first(){return statement.get(...args)||null;},async all(){return {results:statement.all(...args)};}};}};}};
+ const D1={async batch(statements){db.exec('BEGIN');try{const results=[];for(const statement of statements)results.push(await statement.run());db.exec('COMMIT');return results;}catch(error){db.exec('ROLLBACK');throw error;}},prepare(sql){return {bind(...args){const statement=db.prepare(sql);return {async run(){const result=statement.run(...args);return {meta:{changes:Number(result.changes)}};},async first(){return statement.get(...args)||null;},async all(){return {results:statement.all(...args)};}};}};}};
  objects=new Map();env={DB:D1,BUCKET:{async put(key,body){objects.set(key,new Uint8Array(body));},async get(key){const body=objects.get(key);return body?{body}:null;},async delete(key){objects.delete(key);}}};
 });
 const postId='11111111-1111-4111-8111-111111111111',mediaId='22222222-2222-4222-8222-222222222222';
@@ -103,4 +103,46 @@ test('a cover image remains protected even when it is not a post attachment',asy
 test('manual status requires completion records for all channels',async()=>{
  const invalid={...example(),status:'manual'};assert.equal((await call('posts/'+postId,'PUT',invalid,'alice',{'if-match':'0'})).status,400);
  const valid={...invalid,targets:[{id:'facebook',format:'Text',options:{manualCompletedAt:new Date().toISOString()}}]};assert.equal((await call('posts/'+postId,'PUT',valid,'alice',{'if-match':'0'})).status,200);
+});
+
+test('only the configured verified owner can bind admin, which then follows the stable ID',async()=>{
+ env.ADMIN_BOOTSTRAP_EMAIL='alice@example.test';
+ assert.equal((await (await call('session','GET',undefined,'bob')).json()).user.role,'member');
+ assert.equal((await call('admin/history','GET',undefined,'bob')).status,403);
+ const session=await (await call('session')).json();assert.equal(session.user.role,'admin');
+ const changed=await (await call('session','GET',undefined,'alice',{'oai-authenticated-user-email':'changed@example.test'})).json();assert.equal(changed.user.role,'admin');
+ assert.equal((await (await call('session','GET',undefined,'impostor',{'oai-authenticated-user-email':'alice@example.test'})).json()).user.role,'member');
+});
+test('65 draft pairs seed once without overwriting edits or reviving deletions',async()=>{
+ env.ADMIN_BOOTSTRAP_EMAIL='alice@example.test';await call('session');
+ const posts=await (await call('posts')).json(),media=await (await call('media')).json();
+ assert.equal(posts.length,65);assert.equal(media.length,65);assert.ok(posts.every(p=>p.status==='draft'&&p.targets[0].id==='facebook'&&p.plannedAt===null));
+ const post=posts[0];await call('posts/'+post.id,'PUT',{...post,caption:'My edited caption'},'alice',{'if-match':'1'});
+ await call('posts/'+posts[1].id,'DELETE',undefined,'alice',{'if-match':'1'});
+ await call('session');const reopened=await (await call('posts')).json();assert.equal(reopened.length,64);assert.equal(reopened.find(p=>p.id===post.id).caption,'My edited caption');
+ // Simulate an interrupted import retry, including after deletion.
+ db.prepare('UPDATE app_admins SET seeded = 0').run();await call('session');assert.equal((await (await call('posts')).json()).length,64);
+ const file=await call('media/'+media[0].id+'/file');assert.equal(file.status,302);assert.match(file.headers.get('location'),/^\/content-packs\/sa-provinces\/\d\d\.png$/);
+ assert.equal((await call('media/'+media[0].id+'/file','GET',undefined,'bob')).status,404);
+});
+test('history captures edits and deletion and recovers a new copy with its removed media',async()=>{
+ env.ADMIN_BOOTSTRAP_EMAIL='alice@example.test';await call('session');
+ const png=new Uint8Array([137,80,78,71,13,10,26,10,0]);await call('media/'+mediaId,'PUT',png,'alice',{'content-type':'image/png'});
+ const original={...example(),mediaIds:[mediaId]};await call('posts/'+postId,'PUT',original,'alice',{'if-match':'0'});
+ await call('posts/'+postId,'PUT',{...original,caption:'Changed'},'alice',{'if-match':'1'});
+ await call('posts/'+postId,'DELETE',undefined,'alice',{'if-match':'2'});
+ await call('media/'+mediaId,'DELETE');
+ const history=await (await call('admin/history')).json();assert.equal(history.filter(p=>p.postId===postId).length,3);
+ assert.equal((await call('admin/recover/'+postId+'/1','POST',undefined,'bob')).status,403);
+ const response=await call('admin/recover/'+postId+'/1','POST');assert.equal(response.status,201);const recovered=await response.json();assert.notEqual(recovered.id,postId);assert.equal(recovered.caption,original.caption);assert.equal(recovered.status,'draft');
+ assert.equal((await call('media/'+mediaId+'/file')).status,200);
+ assert.equal(db.prepare('SELECT deleted FROM posts WHERE id = ?').get(postId).deleted,1);
+ assert.equal((await call('admin/recover/'+postId+'/999','POST')).status,404);
+});
+test('failed media recovery leaves content unchanged',async()=>{
+ env.ADMIN_BOOTSTRAP_EMAIL='alice@example.test';await call('session');
+ const png=new Uint8Array([137,80,78,71,13,10,26,10,0]);await call('media/'+mediaId,'PUT',png,'alice',{'content-type':'image/png'});
+ await call('posts/'+postId,'PUT',{...example(),mediaIds:[mediaId]},'alice',{'if-match':'0'});objects.clear();
+ const before=db.prepare('SELECT count(*) AS n FROM posts').get().n;
+ assert.equal((await call('admin/recover/'+postId+'/1','POST')).status,409);assert.equal(db.prepare('SELECT count(*) AS n FROM posts').get().n,before);
 });
