@@ -14,7 +14,7 @@ export async function all(store){
 }
 export async function get(store,id){return (await all(store)).find(value=>value.id===id);}
 export async function put(store,value){
- await ready();if(storageState.mode==='device')return device.put(store,value);
+ await ready();if(storageState.mode==='device'){await device.put(store,value);return value;}
  if(store==='posts'){
   const saved=await api('posts/'+value.id,{method:'PUT',headers:{'Content-Type':'application/json','If-Match':String(value.version??versions.get(value.id)??0)},body:JSON.stringify(value)});versions.set(saved.id,saved.version);return saved;
  }
