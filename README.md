@@ -39,6 +39,20 @@ For the device-only planner, run `node server.mjs` and open http://127.0.0.1:417
 - Cloud uploads are limited to 25 MB per file. Supported file signatures include JPEG, PNG, GIF, WebP, MP4/MOV, PDF and the supported Office containers. Signature checks do not replace codec validation, document scanning or platform-specific publishability checks.
 - Deleted files are no longer accessible through the API. A retention and permanent-purge feature is not implemented yet.
 
+## Navigation, composition and manual posting
+
+Phone navigation groups the app into Planner, Create, Media, Channels and More. Planner contains Calendar, Drafts and Posted history. More contains storage, backup transfer, activity reports and the roadmap.
+
+The composer adapts to each chosen channel and post type. It supports separate thread segments, poll questions/choices/duration, YouTube audience and visibility, Pinterest board/link fields, business offer/event dates, cover selection and optional settings. Channel previews are layout approximations; they are not screenshots from connected social accounts.
+
+Images can be cropped to common ratios without replacing the original. Video covers can be captured from a selected frame. Images can be reordered and given alt text. Browser format support still determines which source assets can be opened for these tools.
+
+Post with help prepares captions and downloads and opens the chosen platform for the user to finish posting. The user may explicitly mark each channel complete or undo that mark. Completed history is labelled Posted manually. No external posting action or platform confirmation is inferred from opening a link. Reusing a completed item starts a fresh draft.
+
+Activity reports count saved content and manual confirmations. CSV export escapes text and neutralizes spreadsheet formula prefixes. Reach, engagement, followers, inbox operations and best-time recommendations require real account integrations and are not implemented.
+
+Poll format research: https://help.metricool.com/how-to-schedule-polls-and-carousels-on-linkedin-uvkp3 and https://help.x.com/en/using-x/x-polls. Account and API capabilities still require validation when live connectors are added.
+
 ## Android
 
 `android/` is a Capacitor project bundling `public/planner/`. The native preview keeps a device-local planner and exposes the signed-in cloud workspace in the browser through Cloud & storage. It does not yet embed a native account session or automatically synchronize its IndexedDB records with the server. Export/import transfers native device drafts to cloud mode.

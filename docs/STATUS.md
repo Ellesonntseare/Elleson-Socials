@@ -18,6 +18,11 @@ Prepared on 2 November 2026. Check the delivery message and current GitHub run f
 - Cloud & storage view, explicit local-to-cloud copy, backup transfer and a manual refresh action.
 - Background cloud refresh every 30 seconds while the editor is closed.
 - Android 0.2 preview source with local planning and browser-based access to the authenticated cloud workspace.
+- Simplified navigation: Planner, Create, Media, Channels and More. Drafts and manually posted history are grouped inside Planner; backups and reports are reachable from More.
+- Per-channel previews and richer planning fields: thread segments, X/LinkedIn polls, YouTube titles/audience/visibility, Pinterest boards/links, business offers/events, covers and optional first comments/disclosures.
+- Browser image crop presets, video-frame cover capture, attachment reordering and per-image descriptions. Originals remain in the library.
+- Manual posting assistant with caption copy, file downloads, platform handoff and explicit user-reported completion. Reusing a completed post creates a draft and clears its completion flags.
+- Workspace activity counts and CSV planning reports. These do not claim social performance or automatic publication receipts.
 
 ## Limits
 
@@ -26,6 +31,7 @@ Prepared on 2 November 2026. Check the delivery message and current GitHub run f
 - Cloud uploads are limited to 25 MB per file. Full codecs, video processing and platform-specific media validation are future work.
 - Only one personal workspace per user is implemented. Multiple brands, teams and invitations are future work.
 - Browser-driven tests and local SQLite tests cannot establish physical Android behavior. Device QA remains required.
+- Dedicated video transcoding/trimming, live social analytics, native Android authentication/sync and notifications remain unfinished.
 - The previous turn's screenshot capture failed in both browser surfaces; visual verification must be attempted again for this version.
 
 Version 0.1 already passed twelve platform tests, a successful Android debug build, and a browser draft persistence/calendar flow. Those prior results do not establish the new cloud behavior.

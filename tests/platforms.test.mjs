@@ -12,9 +12,9 @@ test('a multi-platform post applies caption limits per target',()=>{
  assert.deepEqual(validatePost(p),['Bluesky: caption exceeds 300 characters.']);
  p.targets[1].caption='A shorter version.';assert.deepEqual(validatePost(p),[]);
 });
-test('YouTube requires a single video and title',()=>{
- assert.equal(validatePost(post('youtube','Short')).length,3);
- assert.deepEqual(validatePost(post('youtube','Short',{title:'Our new short'}),[{type:'video/mp4'}]),[]);
+test('YouTube requires a single video, title and explicit audience choice',()=>{
+ const errors=validatePost(post('youtube','Short'));assert.ok(errors.some(e=>e.includes('title')));assert.ok(errors.some(e=>e.includes('audience')||e.includes('made for kids')));assert.ok(errors.some(e=>e.includes('video')));
+ assert.deepEqual(validatePost(post('youtube','Short',{title:'Our new short',targets:[{id:'youtube',format:'Short',options:{madeForKids:'no'}}]}),[{type:'video/mp4'}]),[]);
 });
 test('a Pinterest Pin requires a board',()=>assert.ok(validatePost(post('pinterest','Image Pin'),[{type:'image/jpeg'}]).some(e=>e.includes('board'))));
 test('a TikTok carousel rejects video and a lone image',()=>{

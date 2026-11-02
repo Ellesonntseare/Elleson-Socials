@@ -89,3 +89,18 @@ test('invalid timezones and duplicate target IDs are rejected',()=>{
  assert.throws(()=>cleanPost({...example(),timezone:'invented'},postId));assert.throws(()=>cleanPost({...example(),targets:[...example().targets,...example().targets]},postId));
 });
 test('media type derives from its signature rather than a claimed MIME header',()=>assert.equal(checkedMediaType(new TextEncoder().encode('%PDF-test'),'image/png'),'application/pdf'));
+test('format options and image descriptions survive the cloud round trip',async()=>{
+ await call('media/'+mediaId,'PUT',new Uint8Array([137,80,78,71,13,10,26,10,0]),'alice',{'content-type':'image/png'});
+ const p={...example(),mediaIds:[mediaId],mediaDetails:{[mediaId]:{altText:'A bright studio window'}},targets:[{id:'youtube',format:'Video',options:{title:'A new film',madeForKids:'no',coverId:mediaId}}]};
+ assert.equal((await call('posts/'+postId,'PUT',p,'alice',{'if-match':'0'})).status,200);
+ const saved=(await (await call('posts')).json())[0];assert.equal(saved.targets[0].options.title,'A new film');assert.equal(saved.mediaDetails[mediaId].altText,'A bright studio window');
+});
+test('a cover image remains protected even when it is not a post attachment',async()=>{
+ await call('media/'+mediaId,'PUT',new Uint8Array([137,80,78,71,13,10,26,10,0]),'alice',{'content-type':'image/png'});
+ const p={...example(),targets:[{id:'youtube',format:'Video',options:{coverId:mediaId}}]};await call('posts/'+postId,'PUT',p,'alice',{'if-match':'0'});
+ assert.equal((await call('media/'+mediaId,'DELETE')).status,409);
+});
+test('manual status requires completion records for all channels',async()=>{
+ const invalid={...example(),status:'manual'};assert.equal((await call('posts/'+postId,'PUT',invalid,'alice',{'if-match':'0'})).status,400);
+ const valid={...invalid,targets:[{id:'facebook',format:'Text',options:{manualCompletedAt:new Date().toISOString()}}]};assert.equal((await call('posts/'+postId,'PUT',valid,'alice',{'if-match':'0'})).status,200);
+});

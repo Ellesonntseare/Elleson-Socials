@@ -19,10 +19,17 @@ jobs:
       - run: npm test
       - run: node --check public/planner/app.js && node --check public/planner/storage.js
       - run: npm run build
+      - run: npx tsc --noEmit
       - name: Apply local database schema
         run: node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_next_annihilus.sql
       - name: Verify built Worker with D1 and R2
         run: node scripts/smoke-worker.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Elleson-Socials-web-build
+          path: dist/
+          include-hidden-files: true
+          if-no-files-found: error
       - run: npm audit --omit=dev
       - run: npx cap sync android
       - uses: actions/setup-java@v5
