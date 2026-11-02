@@ -46,3 +46,15 @@ Version 0.1 already passed twelve platform tests, a successful Android debug bui
 - SQLite triggers record post versions atomically, including edits and deletions. Admin & recovery restores copies as new drafts, with retained media, without overwriting current work. The interface lists 150 recent versions; database history is retained without automatic pruning in this release.
 - Existing full workspace export includes active posts and media; it excludes cloud version history. Original ZIPs remain unchanged. Supplied statistical claims have not been independently checked.
 - 53 automated tests include owner binding, retry-safe 65-post imports, media isolation and revision recovery. Hosted owner sign-in remains a user step; no social network publishing is performed.
+
+
+## 0.3.0 — account and shared-host update
+
+- Plain-English navigation: Schedule, Drafts, Files, Accounts, Settings. Removed the roadmap and marketing text from user flows.
+- Serialized autosave, collection search and filtering, bulk collection changes and date assignment. Dates remain saved plans; automatic social publishing is not implemented.
+- Server-owned activity rows record post/file/connection changes in the same SQLite/D1 transaction, scoped to the account workspace. Hosted routes never fall back to device data.
+- OAuth connection handlers for Facebook, Instagram, Google/YouTube, Google Business Profile, LinkedIn, TikTok, X, Pinterest and Threads; Bluesky uses an app password. Provider apps still require real credentials, correct return URLs, products/permissions and applicable platform approval. No live account authorization has been verified.
+- AES-GCM encryption binds tokens to their workspace/account; browser responses do not include tokens or app secrets. App settings are administrator-only.
+- A Node host module in `server/node-host.mjs` mounts the standalone app at `/socials`, using a trusted host principal, persistent SQLite, private files and a server-held encryption key. Cloud and self-hosted account data are separate; transfer uses explicit backups.
+- Android 0.3.0 offers server-backed sign-in through the browser and recovery/export of older device data. It does not claim native ChatGPT session synchronization. Stable APK signing is configured in GitHub Actions; older preview APKs used ephemeral signing keys and may require backup/migration before replacement.
+- 66 automated tests cover concurrency, account isolation, authenticated Node mounting, durable activity, private media, recovery, encrypted tokens, OAuth state and replay protection. Actual provider approval flows and physical Android interaction remain unverified.

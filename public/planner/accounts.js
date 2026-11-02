@@ -1,0 +1,36 @@
+import {api,storageState} from './storage.js';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export async function showAccounts(view,platforms){
+ view.innerHTML='<div class="page-head"><h1>Accounts</h1></div><p role="status">Loading accounts…</p>';
+ if(storageState.mode!=='cloud'){view.innerHTML='<div class="page-head"><h1>Accounts</h1></div><a class="button primary" href="https://elleson-socials.poeticbeech16.chatgpt.site/planner/#channels" target="_blank" rel="noopener">Open online account ↗</a>';return;}
+ try{
+  const data=await api('social');if(location.hash&&location.hash!=='#channels')return;
+  view.innerHTML=`<div class="page-head"><div><h1>Accounts</h1><p>${data.accounts.length} connected</p></div>${data.isAdmin?'<button class="button secondary" data-app-settings>Connection settings</button>':''}</div><div class="platform-grid">${platforms.map(p=>{
+   const info=data.providers.find(x=>x.id===p.id),accounts=data.accounts.filter(x=>x.provider===p.id);
+   return `<article class="platform-card"><div class="platform-top"><span class="platform-icon" style="--color:${p.color}">${esc(p.mark)}</span><h2>${esc(p.name)}</h2></div>${accounts.map(a=>`<div class="connected-account"><strong>${esc(a.name)}</strong><span class="connection-state ${a.status==='connected'?'ok':''}">${a.status==='connected'?'Connected':a.status==='expired'?'Expired':'Reconnect needed'}</span>${a.expires_at?`<small>Access ends ${esc(new Date(a.expires_at).toLocaleDateString())}</small>`:''}<div class="account-actions"><button class="text-button" data-check-account="${a.id}">Check connection</button><button class="text-button" data-connect="${p.id}" ${info.ready?'':'disabled'}>Reconnect</button><button class="text-button" data-disconnect="${a.id}">Disconnect</button></div></div>`).join('')}${info.ready?`<button class="button primary" data-connect="${p.id}">${accounts.length?'Add account':'Connect'}</button>`:data.isAdmin?`<button class="button secondary" data-app-settings>Set up</button>`:'<button class="button secondary" disabled>Unavailable</button>'}<details class="account-formats"><summary>Post types</summary><div class="format-tags">${p.formats.map(f=>`<span class="tag">${esc(f)}</span>`).join('')}</div></details></article>`;
+  }).join('')}</div><p id="account-message" role="status"></p>`;
+  view.querySelectorAll('[data-connect]').forEach(b=>b.onclick=async()=>{
+   if(b.dataset.connect==='bluesky'){blueskyDialog(()=>showAccounts(view,platforms));return;}
+   b.disabled=true;try{const result=await api('social/'+b.dataset.connect+'/start',{method:'POST'});window.top.location.href=result.url;}catch(error){view.querySelector('#account-message').textContent=error.message;b.disabled=false;}
+  });
+  view.querySelectorAll('[data-app-settings]').forEach(b=>b.onclick=()=>appSettings());
+  view.querySelectorAll('[data-disconnect]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api('social/account/'+b.dataset.disconnect,{method:'DELETE'});await showAccounts(view,platforms);}catch(error){view.querySelector('#account-message').textContent=error.message;b.disabled=false;}});
+  view.querySelectorAll('[data-check-account]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api('social/account/'+b.dataset.checkAccount+'/check',{method:'POST'});await showAccounts(view,platforms);}catch(error){await showAccounts(view,platforms);view.querySelector('#account-message').textContent=error.message;}});
+ }catch(error){view.innerHTML='<h1>Accounts</h1><p role="alert">'+esc(error.message)+'</p>';}
+}
+function dialogShell(title){
+ const d=document.createElement('dialog');d.className='account-dialog';d.innerHTML=`<div class="dialog-head"><h2>${title}</h2><button class="icon-button" data-close aria-label="Close">×</button></div><div class="account-dialog-body"></div>`;d.querySelector('[data-close]').onclick=()=>d.close();d.addEventListener('close',()=>d.remove());document.body.append(d);d.showModal();return d;
+}
+function blueskyDialog(done){
+ const d=dialogShell('Connect Bluesky'),body=d.querySelector('.account-dialog-body');
+ body.innerHTML='<form><label>Handle<input name="handle" required autocomplete="username" placeholder="name.bsky.social"></label><label>App password<input name="password" type="password" required autocomplete="off"></label><a class="text-button" href="https://bsky.app/settings/app-passwords" target="_blank" rel="noopener">Create an app password ↗</a><p role="status"></p><button class="button primary" type="submit">Connect</button></form>';
+ body.querySelector('form').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('button');button.disabled=true;try{await api('social/bluesky/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});form.reset();d.close();await done();}catch(error){form.querySelector('[role=status]').textContent=error.message;button.disabled=false;}};
+}
+async function appSettings(){
+ const d=dialogShell('Connection settings'),body=d.querySelector('.account-dialog-body');body.textContent='Loading…';
+ try{
+  const settings=await api('social/settings');body.innerHTML=`${!settings.secureStorage?'<p role="alert">Secure account storage is not enabled.</p>':''}${settings.apps.map(app=>`<details class="social-app-settings"><summary>${esc(app.name)} <span>${app.configured?'Set up':'Not set up'}</span></summary><form data-provider="${app.id}"><a class="text-button" href="${app.portal}" target="_blank" rel="noopener">Open developer account ↗</a><label>App ID<input name="clientId" value="${esc(app.clientId)}" required autocomplete="off"></label><label>App secret<input name="clientSecret" type="password" ${app.configured?'':'required'} autocomplete="new-password" placeholder="${app.configured?'Leave blank to keep the saved secret':''}"></label>${app.id==='meta'?`<label>API version<input name="apiVersion" value="${esc(app.apiVersion)}" required pattern="v[0-9]+[.][0-9]+"></label>`:`<input type="hidden" name="apiVersion" value="${esc(app.apiVersion)}">`}<label>Return address${app.callbacks.map(url=>`<input readonly value="${esc(url)}" aria-label="Return address">`).join('')}</label><p role="status"></p><button class="button primary" type="submit" ${settings.secureStorage?'':'disabled'}>Save settings</button></form></details>`).join('')}`;
+  body.querySelectorAll('form').forEach(form=>form.onsubmit=async e=>{e.preventDefault();const button=form.querySelector('button');button.disabled=true;try{await api('social/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:form.dataset.provider,...Object.fromEntries(new FormData(form))})});form.querySelector('[name=clientSecret]').value='';form.querySelector('[name=clientSecret]').required=false;form.closest('details').querySelector('summary span').textContent='Set up';form.querySelector('[role=status]').textContent='Saved.';}catch(error){form.querySelector('[role=status]').textContent=error.message;}finally{button.disabled=false;}});
+  d.addEventListener('close',()=>{if(location.hash==='#channels')window.dispatchEvent(new HashChangeEvent('hashchange'));},{once:true});
+ }catch(error){body.textContent=error.message;}
+}

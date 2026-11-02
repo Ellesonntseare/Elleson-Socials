@@ -71,3 +71,10 @@ With JDK 21 and Android SDK 36 installed, `android/gradlew.bat assembleDebug` bu
 `npm run build` creates the Sites Worker artifact. The tracked `.openai/hosting.json` preserves the existing Site identity and declares DB/BUCKET. Sites applies the generated schema migrations when publishing. Local and hosted data are separate.
 
 The private hosted preview is https://elleson-socials.poeticbeech16.chatgpt.site and the private source repository is https://github.com/Ellesonntseare/Elleson-Socials. See `docs/STATUS.md` for checked behavior and `docs/PRODUCT.md` for the remaining product scope.
+
+
+### Shared Node host
+
+`server/node-host.mjs` exports `createSocialsHost({dataDir, mount: '/socials'})`. An authenticated host calls its `handle(req, res, {principal, origin})`; the principal contains a stable server-verified `id`, display/contact `email`, and owner-only `admin` flag. Never derive the principal from browser identity headers. Use Node 22.13+ (Node 24 recommended). Keep `dataDir` outside deployed source; it contains SQLite history, private media, and the encryption key. Back it up before moving hosts. The module runs pending append-only migrations and preserves saved data on code updates. The original hosted Site and GitHub repository remain independent.
+
+Social developer app credentials can be configured by an administrator under Accounts → Connection settings. Keep `SOCIAL_TOKEN_KEY` stable. Do not commit app secrets, tokens, signing keys, or host data. Use a stable HTTPS origin for provider return URLs.

@@ -1,4 +1,16 @@
 import {sqliteTable,text,integer,primaryKey,uniqueIndex} from 'drizzle-orm/sqlite-core';
+export const accountActivity=sqliteTable('account_activity',{
+ id:text('id').primaryKey(),workspaceId:text('workspace_id').notNull(),event:text('event').notNull(),entityId:text('entity_id').notNull(),label:text('label').notNull(),createdAt:text('created_at').notNull()
+});
+export const socialApps=sqliteTable('social_apps',{
+ provider:text('provider').primaryKey(),clientId:text('client_id').notNull(),secret:text('secret').notNull(),apiVersion:text('api_version').notNull(),updatedAt:text('updated_at').notNull()
+});
+export const socialStates=sqliteTable('social_states',{
+ hash:text('hash').primaryKey(),workspaceId:text('workspace_id').notNull(),provider:text('provider').notNull(),verifier:text('verifier').notNull(),expiresAt:integer('expires_at').notNull()
+});
+export const socialAccounts=sqliteTable('social_accounts',{
+ id:text('id').primaryKey(),workspaceId:text('workspace_id').notNull(),provider:text('provider').notNull(),remoteId:text('remote_id').notNull(),name:text('name').notNull(),token:text('token').notNull(),expiresAt:integer('expires_at'),scopes:text('scopes').notNull(),status:text('status').notNull(),updatedAt:text('updated_at').notNull()
+},t=>[uniqueIndex('social_remote_owner').on(t.workspaceId,t.provider,t.remoteId)]);
 export const appAdmins=sqliteTable('app_admins',{
  slot:text('slot').primaryKey(),userId:text('user_id').notNull(),seeded:integer('seeded').notNull().default(0),createdAt:text('created_at').notNull()
 });

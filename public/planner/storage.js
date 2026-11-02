@@ -1,8 +1,9 @@
 import * as device from './device-storage.js';
-export const storageState={mode:location.pathname.startsWith('/planner/')&&!new URLSearchParams(location.search).has('device')?'cloud':'device',session:null};
+export const storageState={mode:(location.pathname.startsWith('/planner/')||location.pathname.startsWith('/socials/'))?'cloud':'device',session:null};
+export const apiBase=globalThis.document?.querySelector('meta[name=api-base]')?.content||'/api/';
 const versions=new Map();let initialization;
 export async function api(path,options={}){
- const response=await fetch('/api/'+path,{credentials:'same-origin',...options});
+ const response=await fetch(apiBase+path,{credentials:'same-origin',...options});
  if(!response.ok){let message='Cloud request failed. Please try again.';try{message=(await response.json()).error||message;}catch{}const error=new Error(message);error.status=response.status;throw error;}
  return response.status===204?null:response.json();
 }
@@ -36,3 +37,6 @@ export async function copyDeviceWorkspace(){
  for(const p of localPosts){if(presentPosts.has(p.id))continue;await put('posts',{...p,version:0});postCount++;}
  return {posts:postCount,files};
 }
+
+export const signInURL=apiBase.startsWith('/socials/')?'/':'/signin-with-chatgpt?return_to=/';
+export const signOutURL=apiBase.startsWith('/socials/')?'/':'/signout-with-chatgpt?return_to=/';
